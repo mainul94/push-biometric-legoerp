@@ -10,10 +10,10 @@ from PyQt5.QtGui import QIntValidator, QRegExpValidator
 from PyQt5.QtWidgets import QApplication, QLabel, QLineEdit, QMainWindow, QMessageBox, QPushButton
 
 
-config_template = '''# ERPNext related configs
-ERPNEXT_API_KEY = '{0}'
-ERPNEXT_API_SECRET = '{1}'
-ERPNEXT_URL = '{2}'
+config_template = '''# LegoERP related configs
+LEGOERP_API_KEY = '{0}'
+LEGOERP_API_SECRET = '{1}'
+LEGOERP_URL = '{2}'
 
 
 # operational configs
@@ -57,18 +57,18 @@ class BiometricEasyInstaller(QMainWindow):
 
     def setup_window(self):
         self.setFixedSize(470, 550)
-        self.setWindowTitle('ERPNext Biometric Service')
+        self.setWindowTitle('LegoERP Biometric Service')
 
     def setup_textboxes_and_label(self):
 
         self.create_label("API Secret", "api_secret", 20, 0, 200, 30)
-        self.create_field("textbox_erpnext_api_secret", 20, 30, 200, 30)
+        self.create_field("textbox_legoerp_api_secret", 20, 30, 200, 30)
 
         self.create_label("API Key", "api_key", 20, 60, 200, 30)
-        self.create_field("textbox_erpnext_api_key", 20, 90, 200, 30)
+        self.create_field("textbox_legoerp_api_key", 20, 90, 200, 30)
 
-        self.create_label("ERPNext URL", "erpnext_url", 20, 120, 200, 30)
-        self.create_field("textbox_erpnext_url", 20, 150, 200, 30)
+        self.create_label("LegoERP URL", "legoerp_url", 20, 120, 200, 30)
+        self.create_field("textbox_legoerp_url", 20, 150, 200, 30)
 
         self.create_label("Pull Frequency (in minutes)",
                           "pull_frequency", 250, 0, 200, 30)
@@ -106,9 +106,9 @@ class BiometricEasyInstaller(QMainWindow):
     def set_default_value_or_placeholder_of_field(self):
         if os.path.exists("local_config.py"):
             import local_config as config
-            self.textbox_erpnext_api_secret.setText(config.ERPNEXT_API_SECRET)
-            self.textbox_erpnext_api_key.setText(config.ERPNEXT_API_KEY)
-            self.textbox_erpnext_url.setText(config.ERPNEXT_URL)
+            self.textbox_legoerp_api_secret.setText(config.LEGOERP_API_SECRET)
+            self.textbox_legoerp_api_key.setText(config.LEGOERP_API_KEY)
+            self.textbox_legoerp_url.setText(config.LEGOERP_URL)
             self.textbox_pull_frequency.setText(str(config.PULL_FREQUENCY))
 
             if len(config.devices):
@@ -129,9 +129,9 @@ class BiometricEasyInstaller(QMainWindow):
                     ip.setText(config.devices[self.counter]['ip'])
                     shift.setText(config.shift_type_device_mapping[self.counter]['shift_type_name'])
         else:
-            self.textbox_erpnext_api_secret.setPlaceholderText("c70ee57c7b3124c")
-            self.textbox_erpnext_api_key.setPlaceholderText("fb37y8fd4uh8ac")
-            self.textbox_erpnext_url.setPlaceholderText("example.erpnext.com")
+            self.textbox_legoerp_api_secret.setPlaceholderText("c70ee57c7b3124c")
+            self.textbox_legoerp_api_key.setPlaceholderText("fb37y8fd4uh8ac")
+            self.textbox_legoerp_url.setPlaceholderText("example.legoerp.com")
             self.textbox_pull_frequency.setPlaceholderText("60")
 
         self.textbox_import_start_date.setPlaceholderText("DD/MM/YYYY")
@@ -206,7 +206,7 @@ class BiometricEasyInstaller(QMainWindow):
 
         if not hasattr(self, 'p'):
             print("Starting Service...")
-            self.p = subprocess.Popen('python -c "from push_to_erpnext import infinite_loop; infinite_loop()"', stdout=subprocess.PIPE)
+            self.p = subprocess.Popen('python -c "from push_to_legoerp import infinite_loop; infinite_loop()"', stdout=subprocess.PIPE)
             print("Process running at {}".format(self.p.pid))
             button.setText("Stop Service")
             create_message_box("Service status", "Service has been started")
@@ -266,21 +266,21 @@ class BiometricEasyInstaller(QMainWindow):
         formated_date = "".join([ele for ele in reversed(string.split("/"))])
 
         devices, shifts = self.get_device_details()
-        return config_template.format(self.textbox_erpnext_api_key.text(), self.textbox_erpnext_api_secret.text(), self.textbox_erpnext_url.text(), self.textbox_pull_frequency.text(), formated_date, json.dumps(devices), json.dumps(shifts))
+        return config_template.format(self.textbox_legoerp_api_key.text(), self.textbox_legoerp_api_secret.text(), self.textbox_legoerp_url.text(), self.textbox_pull_frequency.text(), formated_date, json.dumps(devices), json.dumps(shifts))
 
 
 def validate_fields(self):
     def message(text):
         create_message_box("Missing Value", "Please Set {}".format(text), "warning")
 
-    if not self.textbox_erpnext_api_key.text():
+    if not self.textbox_legoerp_api_key.text():
         return message("API Key")
 
-    if not self.textbox_erpnext_api_secret.text():
+    if not self.textbox_legoerp_api_secret.text():
         return message("API Secret")
 
-    if not self.textbox_erpnext_url.text():
-        return message("ERPNext URL")
+    if not self.textbox_legoerp_url.text():
+        return message("LegoERP URL")
 
     if not self.textbox_import_start_date.text():
         return message("Import Start Date")

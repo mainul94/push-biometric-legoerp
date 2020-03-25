@@ -75,7 +75,7 @@ def pull_process_and_push_data(device, device_attendance_logs=None):
     attendance_success_logger = setup_logger(attendance_success_log_file, '/'.join([config.LOGS_DIRECTORY, attendance_success_log_file])+'.log')
     attendance_failed_logger = setup_logger(attendance_failed_log_file, '/'.join([config.LOGS_DIRECTORY, attendance_failed_log_file])+'.log')
     if not device_attendance_logs:
-        device_attendance_logs = get_all_attendance_from_device(device['ip'], device_id=device['device_id'], clear_from_device_on_fetch=device['clear_from_device_on_fetch'])
+        device_attendance_logs = get_all_attendance_from_device(device['ip'], port=device.get('port', 4370), device_id=device['device_id'], clear_from_device_on_fetch=device['clear_from_device_on_fetch'])
         if not device_attendance_logs:
             return
     # for finding the last successfull push and restart from that point (or) from a set 'config.IMPORT_START_DATE' (whichever is later)
@@ -114,19 +114,19 @@ def pull_process_and_push_data(device, device_attendance_logs=None):
                 punch_direction = 'IN'
             else:
                 punch_direction = None
-        erpnext_status_code, erpnext_message = send_to_erpnext(device_attendance_log['user_id'], device_attendance_log['timestamp'], device['device_id'], punch_direction)
-        if erpnext_status_code == 200:
-            attendance_success_logger.info("\t".join([erpnext_message, str(device_attendance_log['uid']),
+        legoerp_status_code, legoerp_message = send_to_legoerp(device_attendance_log['user_id'], device_attendance_log['timestamp'], device['device_id'], punch_direction)
+        if legoerp_status_code == 200:
+            attendance_success_logger.info("\t".join([legoerp_message, str(device_attendance_log['uid']),
                 str(device_attendance_log['user_id']), str(device_attendance_log['timestamp'].timestamp()),
                 str(device_attendance_log['punch']), str(device_attendance_log['status']),
                 json.dumps(device_attendance_log, default=str)]))
         else:
-            attendance_failed_logger.error("\t".join([str(erpnext_status_code), str(device_attendance_log['uid']),
+            attendance_failed_logger.error("\t".join([str(legoerp_status_code), str(device_attendance_log['uid']),
                 str(device_attendance_log['user_id']), str(device_attendance_log['timestamp'].timestamp()),
                 str(device_attendance_log['punch']), str(device_attendance_log['status']),
                 json.dumps(device_attendance_log, default=str)]))
-            if EMPLOYEE_NOT_FOUND_ERROR_MESSAGE not in erpnext_message:
-                raise Exception('API Call to ERPNext Failed.')
+            if EMPLOYEE_NOT_FOUND_ERROR_MESSAGE not in legoerp_message:
+                raise Exception('API Call to LegoERP Failed.')
 
 
 def get_all_attendance_from_device(ip, port=4370, timeout=30, device_id=None, clear_from_device_on_fetch=False):
@@ -163,13 +163,13 @@ def get_all_attendance_from_device(ip, port=4370, timeout=30, device_id=None, cl
     return list(map(lambda x: x.__dict__, attendances))
 
 
-def send_to_erpnext(employee_field_value, timestamp, device_id=None, log_type=None):
+def send_to_legoerp(employee_field_value, timestamp, device_id=None, log_type=None):
     """
-    Example: send_to_erpnext('12349',datetime.datetime.now(),'HO1','IN')
+    Example: send_to_legoerp('12349',datetime.datetime.now(),'HO1','IN')
     """
-    url = config.ERPNEXT_URL + "/api/method/erpnext.hr.doctype.employee_checkin.employee_checkin.add_log_based_on_employee_field"
+    url = config.LEGOERP_URL + "/api/method/cc_common_update.hr_update.doctype.punch_log.punch_log.add_punch_based_on_employee_field"
     headers = {
-        'Authorization': "token "+ config.ERPNEXT_API_KEY + ":" + config.ERPNEXT_API_SECRET,
+        'Authorization': "token "+ config.LEGOERP_API_KEY + ":" + config.LEGOERP_API_SECRET,
         'Accept': 'application/json'
     }
     data = {
@@ -184,10 +184,10 @@ def send_to_erpnext(employee_field_value, timestamp, device_id=None, log_type=No
     else:
         error_str = _safe_get_error_str(response)
         if EMPLOYEE_NOT_FOUND_ERROR_MESSAGE in error_str:
-            error_logger.error('\t'.join(['Error during ERPNext API Call.', str(employee_field_value), str(timestamp.timestamp()), str(device_id), str(log_type), error_str]))
+            error_logger.error('\t'.join(['Error during LegoERP API Call.', str(employee_field_value), str(timestamp.timestamp()), str(device_id), str(log_type), error_str]))
             # TODO: send email?
         else:
-            error_logger.error('\t'.join(['Error during ERPNext API Call.', str(employee_field_value), str(timestamp.timestamp()), str(device_id), str(log_type), error_str]))
+            error_logger.error('\t'.join(['Error during LegoERP API Call.', str(employee_field_value), str(timestamp.timestamp()), str(device_id), str(log_type), error_str]))
         return response.status_code, error_str
 
 def update_shift_last_sync_timestamp(shift_type_device_mapping):
@@ -215,16 +215,16 @@ def update_shift_last_sync_timestamp(shift_type_device_mapping):
                 try:
                     sync_current_timestamp = _safe_convert_date(status.get(f'{shift}_sync_timestamp'), "%Y-%m-%d %H:%M:%S.%f")
                     if (sync_current_timestamp and min_pull_timestamp > sync_current_timestamp) or (min_pull_timestamp and not sync_current_timestamp):
-                        response_code = send_shift_sync_to_erpnext(shift, min_pull_timestamp)
+                        response_code = send_shift_sync_to_legoerp(shift, min_pull_timestamp)
                         if response_code == 200:
                             status.set(f'{shift}_sync_timestamp', str(min_pull_timestamp))
                 except:
                     error_logger.exception('Exception in update_shift_last_sync_timestamp, for shift:'+shift)
 
-def send_shift_sync_to_erpnext(shift_type_name, sync_timestamp):
-    url = config.ERPNEXT_URL + "/api/resource/Shift Type/" + shift_type_name
+def send_shift_sync_to_legoerp(shift_type_name, sync_timestamp):
+    url = config.LEGOERP_URL + "/api/resource/Shift Type/" + shift_type_name
     headers = {
-        'Authorization': "token "+ config.ERPNEXT_API_KEY + ":" + config.ERPNEXT_API_SECRET,
+        'Authorization': "token "+ config.LEGOERP_API_KEY + ":" + config.LEGOERP_API_SECRET,
         'Accept': 'application/json'
     }
     data = {
@@ -236,7 +236,7 @@ def send_shift_sync_to_erpnext(shift_type_name, sync_timestamp):
             info_logger.info("\t".join(['Shift Type last_sync_of_checkin Updated', str(shift_type_name), str(sync_timestamp.timestamp())]))
         else:
             error_str = _safe_get_error_str(response)
-            error_logger.error('\t'.join(['Error during ERPNext Shift Type API Call.', str(shift_type_name), str(sync_timestamp.timestamp()), error_str]))
+            error_logger.error('\t'.join(['Error during LegoERP Shift Type API Call.', str(shift_type_name), str(sync_timestamp.timestamp()), error_str]))
         return response.status_code
     except:
         error_logger.exception("\t".join(['exception when updating last_sync_of_checkin in Shift Type', str(shift_type_name), str(sync_timestamp.timestamp())]))

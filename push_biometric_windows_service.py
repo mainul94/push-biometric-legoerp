@@ -1,12 +1,12 @@
 import time
 from pathlib import Path
 from SMWinservice import SMWinservice
-from push_to_erpnext import main
+from push_to_legoerp import main
 
 class PythonCornerExample(SMWinservice):
-    _svc_name_ = "ERPNextBiometricPushService"
-    _svc_display_name_ = "ERPNext Biometric Push Service"
-    _svc_description_ = "Service to push biometric data from device to ERPNext"
+    _svc_name_ = "LegoERPBiometricPushService"
+    _svc_display_name_ = "LegoERP Biometric Push Service"
+    _svc_description_ = "Service to push biometric data from device to LegoERP"
 
     def start(self):
         self.isrunning = True
